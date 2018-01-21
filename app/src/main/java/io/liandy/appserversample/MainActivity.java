@@ -21,6 +21,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.awt.font.TextAttribute;
 import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -48,6 +49,7 @@ public class MainActivity extends AppCompatActivity {
         server.get("/", new HttpServerRequestCallback() {
             @Override
             public void onRequest(AsyncHttpServerRequest request, AsyncHttpServerResponse response) {
+                Log.d(LOG_TAG, "onRequest /");
                 try {
                     response.send(getIndexContent());
                 } catch (IOException e) {
@@ -56,6 +58,30 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         });
+        server.get("/jquery-3.2.1.min.js", new HttpServerRequestCallback() {
+            @Override
+            public void onRequest(AsyncHttpServerRequest request, AsyncHttpServerResponse response) {
+                Log.d(LOG_TAG, "onRequest jquery-3.2.1.min.js fullPath is " + request.getPath());
+                try {
+                    String fullPath = request.getPath();
+                    fullPath = fullPath.replace("%20", " ");
+                    String resourceName = fullPath;
+                    if (resourceName.startsWith("/")) {
+                        resourceName = resourceName.substring(1);
+                    }
+                    if (resourceName.indexOf("?") > 0) {
+                        resourceName = resourceName.substring(0, resourceName.indexOf("?"));
+                    }
+                    response.setContentType("application/javascript");
+                    BufferedInputStream bInputStream = new BufferedInputStream(getAssets().open(resourceName));
+                    response.sendStream(bInputStream, bInputStream.available());
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    response.code(404).end();
+                }
+            }
+        });
+
         server.get("/files", new HttpServerRequestCallback() {
             @Override
             public void onRequest(AsyncHttpServerRequest request, AsyncHttpServerResponse response) {
@@ -85,13 +111,13 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onRequest(AsyncHttpServerRequest request, AsyncHttpServerResponse response) {
                 String path = request.getPath().replace("/files/", "");
-                Log.d(LOG_TAG, "onRequest /files/* " + path);
                 try {
                     path = URLDecoder.decode(path, "utf-8");
+                    Log.d(LOG_TAG, "onRequest /files/* " + path);
                 } catch (UnsupportedEncodingException e) {
                     e.printStackTrace();
                 }
-                File file = new File(Environment.getExternalStorageDirectory().getPath(), path);
+                File file = new File(path);
                 if (file.exists() && file.isFile()) {
                     try {
                         FileInputStream fis = new FileInputStream(file);
